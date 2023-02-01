@@ -15,6 +15,7 @@ package awslogs
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/aws/shim-loggers-for-containerd/debug"
 	"github.com/aws/shim-loggers-for-containerd/logger"
@@ -104,6 +105,13 @@ func (la *LoggerArgs) RunLogDriver(ctx context.Context, config *logging.Config, 
 		debug.LoggerErr = errors.Wrap(err, "unable to create awslogs driver")
 		return debug.LoggerErr
 	}
+
+	debug.SendEventsToLog(
+		logger.DaemonName,
+		fmt.Sprintf("loggerConfig: %+v", loggerConfig),
+		debug.INFO,
+		0,
+	)
 
 	if la.globalArgs.Mode == logger.NonBlockingMode {
 		debug.SendEventsToLog(logger.DaemonName, "Starting log streaming for non-blocking mode awslogs driver",
