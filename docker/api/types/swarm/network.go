@@ -1,7 +1,7 @@
 package swarm // import "github.com/docker/docker/api/types/swarm"
 
 import (
-	"github.com/docker/docker/api/types/network"
+	"github.com/aws/shim-loggers-for-containerd/docker/api/types/network"
 )
 
 // Endpoint represents an endpoint.

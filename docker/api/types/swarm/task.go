@@ -3,7 +3,7 @@ package swarm // import "github.com/docker/docker/api/types/swarm"
 import (
 	"time"
 
-	"github.com/docker/docker/api/types/swarm/runtime"
+	"github.com/aws/shim-loggers-for-containerd/docker/api/types/swarm/runtime"
 )
 
 // TaskState represents the state of a task.

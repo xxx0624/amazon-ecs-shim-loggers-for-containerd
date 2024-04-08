@@ -3,8 +3,9 @@ package swarm // import "github.com/docker/docker/api/types/swarm"
 import (
 	"time"
 
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/mount"
+	"github.com/aws/shim-loggers-for-containerd/docker/api/types/container"
+	"github.com/aws/shim-loggers-for-containerd/docker/api/types/mount"
+
 	"github.com/docker/go-units"
 )
 

@@ -3,7 +3,7 @@ package ioutils // import "github.com/docker/docker/pkg/ioutils"
 import (
 	"io/ioutil"
 
-	"github.com/docker/docker/pkg/longpath"
+	"github.com/aws/shim-loggers-for-containerd/docker/pkg/longpath"
 )
 
 // TempDir is the equivalent of ioutil.TempDir, except that the result is in Windows longpath format.
