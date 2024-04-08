@@ -10,10 +10,10 @@ import (
 	"fmt"
 
 	"github.com/aws/shim-loggers-for-containerd/debug"
+	dockerawslogs "github.com/aws/shim-loggers-for-containerd/docker/logger/awslogs"
 	"github.com/aws/shim-loggers-for-containerd/logger"
 
 	"github.com/containerd/containerd/runtime/v2/logging"
-	dockerawslogs "github.com/docker/docker/daemon/logger/awslogs"
 )
 
 const (

@@ -12,9 +12,9 @@ import (
 	"time"
 
 	"github.com/aws/shim-loggers-for-containerd/debug"
+	types "github.com/aws/shim-loggers-for-containerd/docker/api/types/backend"
+	dockerlogger "github.com/aws/shim-loggers-for-containerd/docker/logger"
 
-	types "github.com/docker/docker/api/types/backend"
-	dockerlogger "github.com/docker/docker/daemon/logger"
 	"golang.org/x/sync/errgroup"
 )
 

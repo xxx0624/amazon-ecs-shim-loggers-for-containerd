@@ -8,7 +8,8 @@
 package mock_logger
 
 import (
-	logger "github.com/docker/docker/daemon/logger"
+	logger "github.com/aws/shim-loggers-for-containerd/docker/logger"
+
 	gomock "github.com/golang/mock/gomock"
 	reflect "reflect"
 )

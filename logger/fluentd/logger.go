@@ -10,10 +10,10 @@ import (
 	"fmt"
 
 	"github.com/aws/shim-loggers-for-containerd/debug"
+	dockerfluentd "github.com/aws/shim-loggers-for-containerd/docker/logger/fluentd"
 	"github.com/aws/shim-loggers-for-containerd/logger"
 
 	"github.com/containerd/containerd/runtime/v2/logging"
-	dockerfluentd "github.com/docker/docker/daemon/logger/fluentd"
 )
 
 const (

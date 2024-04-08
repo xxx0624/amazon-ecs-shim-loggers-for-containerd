@@ -4,9 +4,8 @@
 package awslogs
 
 import (
+	dockerlogger "github.com/aws/shim-loggers-for-containerd/docker/logger"
 	"github.com/aws/shim-loggers-for-containerd/logger"
-
-	dockerlogger "github.com/docker/docker/daemon/logger"
 )
 
 // WithRegion sets awslogs region of logger info.

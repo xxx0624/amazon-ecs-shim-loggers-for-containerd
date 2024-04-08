@@ -6,7 +6,7 @@ package logger
 import (
 	"io"
 
-	dockerlogger "github.com/docker/docker/daemon/logger"
+	dockerlogger "github.com/aws/shim-loggers-for-containerd/docker/logger"
 )
 
 // Opt is a type of function that is used to update the values

@@ -13,7 +13,8 @@ import (
 	"sync/atomic"
 	"testing"
 
-	dockerlogger "github.com/docker/docker/daemon/logger"
+	dockerlogger "github.com/aws/shim-loggers-for-containerd/docker/logger"
+
 	"github.com/stretchr/testify/require"
 )
 

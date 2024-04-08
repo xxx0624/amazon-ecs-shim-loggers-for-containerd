@@ -9,11 +9,11 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/containerd/containerd/runtime/v2/logging"
-	dockersplunk "github.com/docker/docker/daemon/logger/splunk"
-
 	"github.com/aws/shim-loggers-for-containerd/debug"
+	dockersplunk "github.com/aws/shim-loggers-for-containerd/docker/logger/splunk"
 	"github.com/aws/shim-loggers-for-containerd/logger"
+
+	"github.com/containerd/containerd/runtime/v2/logging"
 )
 
 // splunk driver argument keys.
