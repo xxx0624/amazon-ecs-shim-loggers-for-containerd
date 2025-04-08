@@ -41,6 +41,9 @@ var (
 // better way to verify what happened in the TestSendLogs test, which has a goroutine.
 type dummyClient struct {
 	t *testing.T
+	// logCallFailAtIndex is used to controll when the `Log` method will fail. Use -1 to disable it.
+	logCallFailAtIndex int
+	logCallTimes       int
 }
 
 // Log implements customized workflow used for testing purpose.
@@ -48,6 +51,12 @@ type dummyClient struct {
 // tmp test file, which makes sure the function itself accepts and "logging" the message
 // correctly.
 func (d *dummyClient) Log(msg *dockerlogger.Message) error {
+	if d.logCallTimes >= d.logCallFailAtIndex && d.logCallFailAtIndex != -1 {
+		return fmt.Errorf("fail `Log` intentionally at logCallTimes %d", d.logCallTimes)
+	}
+
+	d.logCallTimes++
+
 	var b []byte
 	_, err := os.Stat(logDestinationFileName)
 	if err != nil {
@@ -154,8 +163,11 @@ func TestSendLogs(t *testing.T) {
 		tc := tc
 		t.Run(tc.testName, func(t *testing.T) {
 			l := &Logger{
-				Info:              &dockerlogger.Info{},
-				Stream:            &dummyClient{t},
+				Info: &dockerlogger.Info{},
+				Stream: &dummyClient{
+					t:                  t,
+					logCallFailAtIndex: -1,
+				},
 				bufferSizeInBytes: tc.bufferSizeInBytes,
 				maxReadBytes:      tc.maxReadBytes,
 			}
@@ -206,4 +218,71 @@ func TestNewInfo(t *testing.T) {
 	}
 	info := NewInfo(testContainerID, testContainerName, WithConfig(config))
 	require.Equal(t, config, info.Config)
+}
+
+// TestPipeBroken tests if the pipe is broken.
+func TestPipeBroken(t *testing.T) {
+	logCallFailAtIndex := 1
+	l := &Logger{
+		Info: &dockerlogger.Info{},
+		Stream: &dummyClient{
+			t: t,
+			// only first call to the method `Log` of the log driver will succeed
+			logCallFailAtIndex: logCallFailAtIndex,
+			logCallTimes:       0,
+		},
+		bufferSizeInBytes: 8,
+		maxReadBytes:      4,
+	}
+
+	msgFromIOSource := []string{
+		"First line to write", // 19 chars with 8 char buffer becomes 3 split messages
+	}
+
+	// Create a tmp file that used to mock the io pipe where the logger reads log
+	// messages from.
+	tmpIOSource, err := os.CreateTemp("", "")
+	require.NoError(t, err)
+	defer os.Remove(tmpIOSource.Name()) //nolint:errcheck // testing only
+	var testPipe bytes.Buffer
+	for _, logMessage := range msgFromIOSource {
+		_, err := testPipe.WriteString(logMessage + "\n")
+		require.NoError(t, err)
+	}
+
+	// Create a tmp file that used to inside customized dummy Log function where the
+	// logger sends log messages to.
+	tmpDest, err := os.CreateTemp("", "")
+	require.NoError(t, err)
+	defer os.Remove(tmpDest.Name()) //nolint:errcheck // testing only
+	logDestinationFileName = tmpDest.Name()
+
+	var errGroup errgroup.Group
+	errGroup.Go(func() error {
+		return l.sendLogs(context.TODO(), &testPipe, dummySource, &dummyCleanupTime)
+	})
+	err = errGroup.Wait()
+	// In the `sendLogs` call above, the shim logger will call `Log` of the log driver 3 times in total.
+	// Only the first call will succeed. The second will fail which results in `sendLogs` fails with error below.
+	require.Equal(t, err.Error(), fmt.Sprintf("failed to read logs from stdout pipe: failed to log msg for container : fail `Log` intentionally at logCallTimes %d", logCallFailAtIndex))
+
+	// Verify that the log destination received partial msg only.
+	file, err := os.Open(logDestinationFileName) //nolint:gosec // testing only
+	require.NoError(t, err)
+	defer file.Close() //nolint:errcheck // testing only
+
+	scanner := bufio.NewScanner(file)
+	lines := 0
+	for scanner.Scan() {
+		line := scanner.Text()
+		var msg dockerlogger.Message
+		err = json.Unmarshal([]byte(line), &msg)
+		t.Logf("Received msg: %v", string(msg.Line))
+		require.NoError(t, err)
+		lines++
+	}
+	require.Equal(t, logCallFailAtIndex, lines)
+
+	err = scanner.Err()
+	require.NoError(t, err)
 }
