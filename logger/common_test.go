@@ -43,7 +43,9 @@ type dummyClient struct {
 	t *testing.T
 	// logCallFailAtIndex is used to controll when the `Log` method will fail. Use -1 to disable it.
 	logCallFailAtIndex int
-	logCallTimes       int
+	// logCallSucceedAtIndex is used to controll when the `Log` method will succeed.
+	logCallSucceedAtIndex int
+	logCallTimes          int
 }
 
 // Log implements customized workflow used for testing purpose.
@@ -51,7 +53,8 @@ type dummyClient struct {
 // tmp test file, which makes sure the function itself accepts and "logging" the message
 // correctly.
 func (d *dummyClient) Log(msg *dockerlogger.Message) error {
-	if d.logCallTimes >= d.logCallFailAtIndex && d.logCallFailAtIndex != -1 {
+	if d.logCallTimes >= d.logCallFailAtIndex && d.logCallTimes < d.logCallSucceedAtIndex && d.logCallFailAtIndex != -1 {
+		d.logCallTimes++
 		return fmt.Errorf("fail `Log` intentionally at logCallTimes %d", d.logCallTimes)
 	}
 
@@ -282,6 +285,72 @@ func TestPipeBroken(t *testing.T) {
 		lines++
 	}
 	require.Equal(t, logCallFailAtIndex, lines)
+
+	err = scanner.Err()
+	require.NoError(t, err)
+}
+
+// TestPipeNotBroken verifies the pipe is NOT broken even if the call `Log` to the log driver fails sometimes.
+func TestPipeNotBroken(t *testing.T) {
+	logCallFailAtIndex := 1
+	logCallSucceedAtIndex := 5
+	l := &Logger{
+		Info: &dockerlogger.Info{},
+		Stream: &dummyClient{
+			t: t,
+			// only first call to the method `Log` of the log driver will succeed
+			logCallFailAtIndex:    logCallFailAtIndex,
+			logCallSucceedAtIndex: logCallSucceedAtIndex,
+			logCallTimes:          0,
+		},
+		bufferSizeInBytes: 8,
+		maxReadBytes:      4,
+	}
+
+	msgFromIOSource := "First line to write" // 19 chars with 8 char buffer becomes 3 split messages
+
+	// Create a tmp file that used to mock the io pipe where the logger reads log
+	// messages from.
+	tmpIOSource, err := os.CreateTemp("", "")
+	require.NoError(t, err)
+	defer os.Remove(tmpIOSource.Name()) //nolint:errcheck // testing only
+	var testPipe bytes.Buffer
+	_, err = testPipe.WriteString(msgFromIOSource + "\n")
+	require.NoError(t, err)
+
+	// Create a tmp file that used to inside customized dummy Log function where the
+	// logger sends log messages to.
+	tmpDest, err := os.CreateTemp("", "")
+	require.NoError(t, err)
+	defer os.Remove(tmpDest.Name()) //nolint:errcheck // testing only
+	logDestinationFileName = tmpDest.Name()
+
+	var errGroup errgroup.Group
+	errGroup.Go(func() error {
+		return l.sendLogs(context.TODO(), &testPipe, dummySource, &dummyCleanupTime)
+	})
+	err = errGroup.Wait()
+	require.NoError(t, err)
+
+	// Verify that the log destination received full msg.
+	file, err := os.Open(logDestinationFileName) //nolint:gosec // testing only
+	require.NoError(t, err)
+	defer file.Close() //nolint:errcheck // testing only
+
+	scanner := bufio.NewScanner(file)
+	receivedMsgInDest := ""
+	lines := 0
+	for scanner.Scan() {
+		line := scanner.Text()
+		var msg dockerlogger.Message
+		err = json.Unmarshal([]byte(line), &msg)
+		t.Logf("Received msg: %v", string(msg.Line))
+		receivedMsgInDest += string(msg.Line)
+		require.NoError(t, err)
+		lines++
+	}
+	require.Equal(t, 3, lines)
+	require.Equal(t, receivedMsgInDest, msgFromIOSource)
 
 	err = scanner.Err()
 	require.NoError(t, err)
